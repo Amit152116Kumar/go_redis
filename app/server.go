@@ -76,29 +76,38 @@ func handleConnection(conn net.Conn) {
 	for {
 		println("start")
 		messages, err := decodeMsg(reader)
-		// message, err := reader.ReadString('\n')
 		if err != nil {
 			print(err)
 			break
 		}
-		for _, msg := range messages {
-			if strings.EqualFold(msg, "PING") {
-				conn.Write([]byte("+PONG\r\n"))
-			} else if strings.EqualFold(msg, "COMMAND") {
-				conn.Write([]byte("+OK\r\n"))
+
+		switch strings.ToLower(messages[0]) {
+		case "ping":
+			conn.Write([]byte("+PONG\r\n"))
+
+		case "command":
+			conn.Write([]byte("+OK\r\n"))
+
+		case "echo":
+			if len(messages) != 2 {
+				print("error")
+				conn.Write([]byte("-ERR wrong number of arguments for 'echo' command\r\n"))
 			} else {
-				conn.Write([]byte("-ERR unknown command\r\n"))
+				response := []byte("+" + messages[1] + "\r\n")
+				conn.Write(response)
 			}
-			fmt.Println(msg, "end")
+
+		default:
+			conn.Write([]byte("-ERR unknown command\r\n"))
 		}
+		fmt.Println(messages, "end")
 	}
 }
 
 func main() {
 	listener, err := net.Listen("tcp", "0.0.0.0:"+strconv.Itoa(PORT))
 	if err != nil {
-		fmt.Println("Failed to bind to port", PORT)
-		fmt.Print(err)
+		fmt.Println("Failed to bind to port")
 		os.Exit(1)
 	}
 	defer listener.Close()
