@@ -11,7 +11,11 @@ import (
 	"strings"
 )
 
-var PORT int = 6379
+var (
+	PORT     int                              = 6379
+	HashMap  map[string]string                = make(map[string]string)
+	Commands map[string]func([]string) []byte = make(map[string]func([]string) []byte)
+)
 
 func decodeMsg(reader *bufio.Reader) ([]string, error) {
 	line, err := reader.ReadString(byte('\n'))
@@ -25,7 +29,7 @@ func decodeMsg(reader *bufio.Reader) ([]string, error) {
 	}
 
 	line = strings.TrimSpace(line)
-	fmt.Println(line[1:])
+	fmt.Print(line, " ")
 	switch line[0] {
 	case '*':
 		size, err := strconv.Atoi(line[1:])
@@ -46,7 +50,7 @@ func decodeMsg(reader *bufio.Reader) ([]string, error) {
 				return nil, errors.New("InvalidArgumentError")
 			}
 			length, _ := strconv.Atoi(sizeBuffer[1:])
-			fmt.Println(length)
+			fmt.Print(sizeBuffer, " ")
 
 			data := make([]byte, length)
 			_, err = io.ReadFull(reader, data)
@@ -66,7 +70,7 @@ func decodeMsg(reader *bufio.Reader) ([]string, error) {
 		fmt.Printf("Unsupported RESP type: %c \n", line[0])
 		return nil, errors.New("InvalidArgumentError")
 	}
-	return nil, nil
+	return nil, errors.New("InvalidArgumentError")
 }
 
 func handleConnection(conn net.Conn) {
@@ -74,37 +78,32 @@ func handleConnection(conn net.Conn) {
 
 	reader := bufio.NewReader(conn)
 	for {
-		println("start")
+		print("start -> ")
 		messages, err := decodeMsg(reader)
 		if err != nil {
 			print(err)
+			conn.Write([]byte("-" + err.Error() + "\r\n"))
 			break
 		}
 
-		switch strings.ToLower(messages[0]) {
-		case "ping":
-			conn.Write([]byte("+PONG\r\n"))
+		function, ok := Commands[strings.ToLower(messages[0])]
 
-		case "command":
-			conn.Write([]byte("+OK\r\n"))
-
-		case "echo":
-			if len(messages) != 2 {
-				print("error")
-				conn.Write([]byte("-ERR wrong number of arguments for 'echo' command\r\n"))
-			} else {
-				response := []byte("+" + messages[1] + "\r\n")
-				conn.Write(response)
-			}
-
-		default:
+		if !ok {
 			conn.Write([]byte("-ERR unknown command\r\n"))
 		}
-		fmt.Println(messages, "end")
+
+		response := function(messages[1:])
+		conn.Write(response)
+		fmt.Println(messages, " <- end")
 	}
 }
 
 func main() {
+	Commands["ping"] = ping
+	Commands["echo"] = echo
+	Commands["command"] = command
+	Commands["set"] = set
+	Commands["get"] = get
 	listener, err := net.Listen("tcp", "0.0.0.0:"+strconv.Itoa(PORT))
 	if err != nil {
 		fmt.Println("Failed to bind to port")
