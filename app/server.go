@@ -36,7 +36,7 @@ func decodeMsg(reader *bufio.Reader) ([]string, error) {
 
 		parts := make([]string, size)
 		for i := 0; i < size; i++ {
-			line, err := reader.ReadString(byte('\n'))
+			line, err = reader.ReadString(byte('\n'))
 			if err != nil {
 				fmt.Println("Connection close by client or read error", err)
 				break
