@@ -11,9 +11,14 @@ import (
 	"strings"
 )
 
+type Value struct {
+	val    string
+	expiry int64
+}
+
 var (
 	PORT     int                              = 6379
-	HashMap  map[string]string                = make(map[string]string)
+	HashMap  map[string]Value                 = make(map[string]Value)
 	Commands map[string]func([]string) []byte = make(map[string]func([]string) []byte)
 )
 
@@ -82,14 +87,14 @@ func handleConnection(conn net.Conn) {
 		messages, err := decodeMsg(reader)
 		if err != nil {
 			print(err)
-			conn.Write([]byte("-" + err.Error() + "\r\n"))
+			conn.Write(encodeSimpleError(err.Error()))
 			break
 		}
 
 		function, ok := Commands[strings.ToLower(messages[0])]
 
 		if !ok {
-			conn.Write([]byte("-ERR unknown command\r\n"))
+			conn.Write(encodeSimpleError("Unknown Command"))
 		}
 
 		response := function(messages[1:])
