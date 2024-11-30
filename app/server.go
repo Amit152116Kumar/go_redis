@@ -21,7 +21,7 @@ type Configurations struct {
 }
 
 var (
-	PORT           int = 6379
+	PORT           int = 6389
 	configSettings *Configurations
 	HashMap        map[string]Value                 = make(map[string]Value)
 	Commands       map[string]func([]string) []byte = make(map[string]func([]string) []byte)
