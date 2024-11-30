@@ -1,15 +1,9 @@
 package main
 
 import (
-	"fmt"
-	"strconv"
 	"strings"
 	"time"
 )
-
-func wrongArguments(cmd string) []byte {
-	return []byte(fmt.Sprintf("-ERR wrong number of arguments for %s command\r\n", cmd))
-}
 
 func echo(args []string) []byte {
 	if len(args) != 1 {
@@ -22,28 +16,14 @@ func command(args []string) []byte {
 	if len(args) != 0 {
 		return wrongArguments("command")
 	}
-	return encodeSimpleString("OK")
+	return encodeSimpleString("ok")
 }
 
 func ping(args []string) []byte {
 	if len(args) != 0 {
 		return wrongArguments("ping")
 	}
-	return encodeSimpleString("PONG")
-}
-
-func containsExpiry(slice []string) int64 {
-	for i, element := range slice {
-		if strings.EqualFold(element, "px") {
-			exp, _ := strconv.ParseInt(slice[i+1], 10, 64)
-			return exp + time.Now().Local().UnixMilli()
-		}
-		if strings.EqualFold(element, "ex") {
-			exp, _ := strconv.ParseInt(slice[i+1], 10, 64)
-			return exp*1000 + time.Now().Local().UnixMilli()
-		}
-	}
-	return 0
+	return encodeSimpleString("pong")
 }
 
 func set(args []string) []byte {
@@ -72,25 +52,21 @@ func get(args []string) []byte {
 	return encodeBulkString(nil)
 }
 
-func encodeBulkString(response []string) []byte {
-	if response == nil {
-		return []byte("$-1\r\n")
+func config(args []string) []byte {
+	if len(args) != 2 {
+		return wrongArguments("config")
 	}
-	var result string
-	if len(response) > 1 {
-		result = fmt.Sprintf("*%d\r\n", len(response))
+	if !strings.EqualFold("get", args[0]) {
+		return encodeSimpleError("`" + strings.ToUpper(args[0]) + "` is wrong method")
 	}
-	for _, bulk := range response {
-		result += fmt.Sprintf("$%d\r\n", len(bulk))
-		result += fmt.Sprint(bulk, "\r\n")
+	var value string
+	switch args[1] {
+	case "dir":
+		value = configSettings.dir
+	case "dbfilename":
+		value = configSettings.dbfilename
+	default:
+		return encodeSimpleError("wrong config parameter")
 	}
-	return []byte(result)
-}
-
-func encodeSimpleString(res string) []byte {
-	return []byte(fmt.Sprint("+", res, "\r\n"))
-}
-
-func encodeSimpleError(err string) []byte {
-	return []byte(fmt.Sprint("-Err ", err, "\r\n"))
+	return encodeBulkString([]string{args[1], value})
 }

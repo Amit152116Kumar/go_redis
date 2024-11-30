@@ -15,11 +15,16 @@ type Value struct {
 	val    string
 	expiry int64
 }
+type Configurations struct {
+	dir        string
+	dbfilename string
+}
 
 var (
-	PORT     int                              = 6379
-	HashMap  map[string]Value                 = make(map[string]Value)
-	Commands map[string]func([]string) []byte = make(map[string]func([]string) []byte)
+	PORT           int = 6379
+	configSettings *Configurations
+	HashMap        map[string]Value                 = make(map[string]Value)
+	Commands       map[string]func([]string) []byte = make(map[string]func([]string) []byte)
 )
 
 func decodeMsg(reader *bufio.Reader) ([]string, error) {
@@ -103,12 +108,7 @@ func handleConnection(conn net.Conn) {
 	}
 }
 
-func main() {
-	Commands["ping"] = ping
-	Commands["echo"] = echo
-	Commands["command"] = command
-	Commands["set"] = set
-	Commands["get"] = get
+func runServer() {
 	listener, err := net.Listen("tcp", "0.0.0.0:"+strconv.Itoa(PORT))
 	if err != nil {
 		fmt.Println("Failed to bind to port")
@@ -124,4 +124,52 @@ func main() {
 		}
 		go handleConnection(conn)
 	}
+}
+
+func setValidCommands() {
+	Commands["ping"] = ping
+	Commands["echo"] = echo
+	Commands["command"] = command
+	Commands["set"] = set
+	Commands["get"] = get
+	Commands["config"] = config
+}
+
+func parseArgs() {
+	Args := os.Args[1:]
+	if len(Args) > 0 {
+		configSettings = &Configurations{}
+
+		for i := 0; i < len(Args); i++ {
+			println(i, Args[i], Args[i+1])
+
+			switch Args[i] {
+			case "--dir":
+				if i+1 < len(Args) && isValidDir(Args[i+1]) {
+					configSettings.dir = Args[i+1]
+					i++
+				} else {
+					fmt.Println("The path is not a valid directory.")
+					os.Exit(1)
+				}
+			case "--dbfilename":
+				if i+1 < len(Args) {
+					configSettings.dbfilename = Args[i+1]
+					i++
+				} else {
+					fmt.Println("The path is not a valid directory.")
+					os.Exit(1)
+				}
+			default:
+				fmt.Printf("Unknown argument: %s\n", Args[i])
+				os.Exit(1)
+			}
+		}
+	}
+}
+
+func main() {
+	setValidCommands()
+	parseArgs()
+	runServer()
 }
