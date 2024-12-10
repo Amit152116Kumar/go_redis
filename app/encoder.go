@@ -29,5 +29,5 @@ func encodeSimpleError(err string) []byte {
 }
 
 func wrongArguments(cmd string) []byte {
-	return []byte(fmt.Sprintf("-ERR wrong number of arguments for `%s` command\r\n", strings.ToLower(cmd)))
+	return encodeSimpleError(fmt.Sprintf("wrong number of arguments for `%s` command", strings.ToLower(cmd)))
 }

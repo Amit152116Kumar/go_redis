@@ -1,6 +1,7 @@
 package main
 
 import (
+	"path/filepath"
 	"strings"
 	"time"
 )
@@ -69,4 +70,24 @@ func config(args []string) []byte {
 		return encodeSimpleError("wrong config parameter")
 	}
 	return encodeBulkString([]string{args[1], value})
+}
+
+func keys(args []string) []byte {
+	if len(args) != 1 {
+		return wrongArguments("keys")
+	}
+	pattern := args[0]
+
+	var matchingKeys []string
+
+	for key := range HashMap {
+		ok, err := filepath.Match(pattern, key)
+		if err == filepath.ErrBadPattern {
+			return encodeSimpleError(err.Error())
+		}
+		if ok {
+			matchingKeys = append(matchingKeys, key)
+		}
+	}
+	return encodeBulkString(matchingKeys)
 }

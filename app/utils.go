@@ -1,10 +1,32 @@
 package main
 
 import (
+	"bufio"
+	"fmt"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
+)
+
+// type Encoding int
+//
+// const (
+// 	StringEncoding Encoding = iota
+// 	ListEncoding
+// 	SetEncoding
+// 	SortedSetEncoding
+// 	HashEncoding
+// )
+
+const (
+	EOF          byte = 0xFF // End of file
+	SELECTDB     byte = 0xFE // Select a database
+	EXPIRETIME   byte = 0xFD // Expire time in seconds
+	EXPIRETIMEMS byte = 0xFC // Expire time in milliseconds
+	RESIZEDB     byte = 0xFB // Resize the database
+	AUX          byte = 0xFA // Auxiliary data
 )
 
 func isValidDir(path string) bool {
@@ -24,4 +46,23 @@ func containsExpiry(slice []string) int64 {
 		}
 	}
 	return 0
+}
+
+func writeRDBFile(data []byte) error {
+	file, err := os.Create(configSettings.dir + configSettings.dbfilename)
+	if err != nil {
+		return fmt.Errorf("failed to write data :%v", err)
+	}
+	writer := bufio.NewWriter(file)
+
+	_, err = writer.Write(data)
+	if err != nil {
+		return err
+	}
+
+	err = writer.Flush()
+	if err != nil {
+		return err
+	}
+	return nil
 }

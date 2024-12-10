@@ -96,15 +96,16 @@ func handleConnection(conn net.Conn) {
 			break
 		}
 
+		fmt.Println(messages, " <- end")
 		function, ok := Commands[strings.ToLower(messages[0])]
 
 		if !ok {
 			conn.Write(encodeSimpleError("Unknown Command"))
+			continue
 		}
 
 		response := function(messages[1:])
 		conn.Write(response)
-		fmt.Println(messages, " <- end")
 	}
 }
 
@@ -133,6 +134,7 @@ func setValidCommands() {
 	Commands["set"] = set
 	Commands["get"] = get
 	Commands["config"] = config
+	Commands["keys"] = keys
 }
 
 func parseArgs() {
@@ -165,7 +167,40 @@ func parseArgs() {
 				os.Exit(1)
 			}
 		}
+		parseRdbFile()
 	}
+}
+
+func parseRdbFile() error {
+	if configSettings == nil {
+		return errors.New("config empty")
+	}
+	file, err := os.Open(configSettings.dir + "/" + configSettings.dbfilename)
+	if err != nil {
+		return fmt.Errorf("failed to open file :%v", err)
+	}
+	defer file.Close()
+
+	reader := bufio.NewReader(file)
+	var opCode byte
+	var data []byte
+	for {
+		buffer, err := reader.ReadByte()
+		if err != nil {
+			break
+		}
+		if buffer >= 0xFA {
+			parseOpCodeData(data, opCode)
+			// if buffer == EOF {
+			// 	break
+			// }
+			data = []byte{buffer}
+			opCode = buffer
+		} else {
+			data = append(data, buffer)
+		}
+	}
+	return nil
 }
 
 func main() {
